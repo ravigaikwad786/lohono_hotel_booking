@@ -11,7 +11,6 @@ Rails.application.routes.draw do
   resources :villas, only: [:index] do
     collection do
       get :calculate_rate
-      get :show_data
     end
   end
 end

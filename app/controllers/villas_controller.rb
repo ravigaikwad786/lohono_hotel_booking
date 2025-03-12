@@ -32,10 +32,4 @@ class VillasController < ApplicationController
     
     render json: { available: available, total_price: total_price }
   end
-
-  def show_data
-  	villa = Villa.all
-  	villa_schedule = VillaSchedule.all
-    render json: {message: "working find", villas: villa, schedule: villa_schedule}
-  end
 end
