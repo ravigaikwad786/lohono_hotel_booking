@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  villa: one
+  date: 2025-03-12
+  price: 1
+  available: false
+
+two:
+  villa: two
+  date: 2025-03-12
+  price: 1
+  available: false
