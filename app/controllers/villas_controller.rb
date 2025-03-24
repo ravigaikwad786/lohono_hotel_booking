@@ -30,32 +30,7 @@ class VillasController < ApplicationController
   end
 
   def calculate_dynamic_rate
-    villa = Villa.find(params[:villa_id])
-    start_date = params[:check_in_date].to_date
-    end_date = params[:check_out_date].to_date
-    nights = villa.villa_schedules.where(date: start_date...end_date)
-
-    available = nights.all?(&:available)
-    base_price = nights.sum(&:price)
-
-    if available
-      demand_factor = calculate_demand_factor(villa, start_date, end_date)
-      seasonal_factor = seasonal_adjustment(start_date, end_date)
-      booking_window_factor = booking_window_adjustment(start_date)
-      high_demand_factor = high_demand_adjustment(nights.map { |n| n[2] })
-
-      total_price = base_price * demand_factor * seasonal_factor * booking_window_factor
-
-      total_price *= 1.18
-    else
-      total_price = nil
-    end
-
-    render json: { available: available, total_price: total_price }
-  end
-
-   def calculate_dynamic_rate
-    villa = Villa.includes(:villa_schedules).find_by(id: params[:villa_id])
+   villa = Villa.includes(:villa_schedules).find_by(id: params[:villa_id])
     return render json: { error: "Villa not found" }, status: :not_found unless villa
 
     start_date = params[:check_in_date].to_date
@@ -70,16 +45,33 @@ class VillasController < ApplicationController
     demand_factor = calculate_demand_factor(start_date, end_date)
     seasonal_factor = seasonal_adjustment(start_date, end_date)
     booking_window_factor = booking_window_adjustment(start_date)
-    high_demand_factor = high_demand_adjustment(nights.map { |n| n[2] }) # Apply 11% increase if in high-demand dates
+    high_demand_factor = high_demand_adjustment(nights.map { |n| n[2] })
 
     total_price = base_price * demand_factor * seasonal_factor * booking_window_factor * high_demand_factor * 1.18
 
     render json: { available: available, total_price: total_price.round(2) }
   end
 
+  def calculate_rate
+    begin
+      villa = Villa.find(params[:villa_id])
+    rescue ActiveRecord::RecordNotFound
+      return render json: { error: "Villa not found" }, status: :not_found 
+    end
+    start_date = params[:check_in_date].to_date
+    end_date = params[:check_out_date].to_date
+    
+    nights = villa.villa_schedules.where(date: start_date...end_date).pluck(:available, :price)
+
+    available = nights.all?(&:available)
+    total_price = nights.sum(&:price) * 1.18 if available
+    
+    render json: { available: available, total_price: total_price }
+  end
+
   private
 
-  def calculate_demand_factor(villa, start_date, end_date)
+  def calculate_demand_factor(start_date, end_date)
     total_villas = Villa.count
     booked_villas = Villa.joins(:villa_schedules)
                          .where('villa_schedules.date >= ? AND villa_schedules.date < ?', start_date, end_date)
